@@ -7,10 +7,26 @@ from nltk.probability import FreqDist, ConditionalFreqDist
 from nltk.corpus import stopwords
 
 #fancy way of loading files
-POLARITY_DATA_DIR = os.path.join('polarityData', 'rt-polaritydata')
+POLARITY_DATA_DIR = os.path.join('polarityData', 'nt-polaritydata')
 RT_POLARITY_POS_FILE = os.path.join(POLARITY_DATA_DIR, 'rt-polarity-pos.txt')
 RT_POLARITY_NEG_FILE = os.path.join(POLARITY_DATA_DIR, 'rt-polarity-neg.txt')
 stopWords = set(stopwords.words('english'))
+
+
+def get_words(sentence):
+	WordsMod = []
+	Words = re.findall(r"[\w']+|[.,!?;]", sentence.rstrip())
+	for w in Words:
+		if len(w) > 1:
+			if w not in stopWords:
+				WordsMod.append(w)
+	return WordsMod
+
+
+#FLOW OF THINGS
+#OPEN FILE. READ AS SENTENCES. FILTER SENTENCE - REMOVE STOPWORDS. 
+# PASS TO FEATURE_SELECT - 
+
 
 #this function takes a feature selection mechanism and returns its performance in a variety of metrics
 def evaluate_features(feature_select):
@@ -23,14 +39,7 @@ def evaluate_features(feature_select):
 	with open(RT_POLARITY_POS_FILE, 'r') as posSentences:
 		for i in posSentences:
 			posWordsMod = []
-			posWords = re.findall(r"[\w']+|[.,!?;]", i.rstrip())
-			#posWordsAll looks like ['provides', 'a', 'porthole',..., 'noble', ',', 'all', '.']
-			for w in posWords:
-				if len(w) > 1:
-					if w not in stopWords:
-						posWordsMod.append(w)
-			#print(" Printin poswords: ")			
-			#print(posWords)
+			posWordsMod = get_words(i)
 			#print("\n Printing poswordsMod: ")
 			#print(posWordsMod)
 			#feature_select(posWords) is a dictionary 
@@ -39,11 +48,7 @@ def evaluate_features(feature_select):
 	with open(RT_POLARITY_NEG_FILE, 'r') as negSentences:
 		for i in negSentences:
 			negWordsMod = []			
-			negWords = re.findall(r"[\w']+|[.,!?;]", i.rstrip())
-			for w in negWords:
-				if len(w) > 1:
-					if w not in stopWords:
-						negWordsMod.append(w)
+			negWordsMod = get_words(i)
 			negWordsMod = [feature_select(negWordsMod), 'neg']
 			negFeatures.append(negWordsMod)
 		
@@ -79,14 +84,12 @@ def evaluate_features(feature_select):
 	print 'neg precision:', precision(referenceSets['neg'], testSets['neg'])
 	print 'neg recall:', recall(referenceSets['neg'], testSets['neg'])
 	classifier.show_most_informative_features(10)
+	test_data = raw_input("Enter text for analysis:  ")
+	test_data = get_words(test_data)
+	test_data = feature_select(test_data)	
+	print 'feature selection', test_data 
+	print 'prediction: ',classifier.classify(test_data)
 
-#creates a feature selection mechanism that uses all words
-def make_full_dict(words):
-	return dict([(word, True) for word in words])
-
-#tries using all words as the feature selection mechanism
-print 'using all words as features'
-evaluate_features(make_full_dict)
 
 #scores words based on chi-squared test to show information gain (http://streamhacker.com/2010/06/16/text-classification-sentiment-analysis-eliminate-low-information-features/)
 def create_word_scores():
@@ -142,7 +145,7 @@ def best_word_features(words):
 	return dict([(word, True) for word in words if word in best_words])
 
 #numbers of features to select
-numbers_to_test = [10, 100, 1000, 10000, 15000]
+numbers_to_test = [10000, 15000]
 #tries the best_word_features mechanism with each of the numbers_to_test of features
 for num in numbers_to_test:
 	print 'evaluating best %d word features' % (num)
